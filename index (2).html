@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en"><head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260708-05-579f504"}');</script><script src="/_sdk/f432b76fb310b513.telemetry_sdk.js" integrity="sha512-9FJQ55EKmmqhyyik8BhrMVfm0+iYYfb8uOlRsjtkxJMEI97qOVEI4PnHohDjQAtvAep0IOEpdQ64eki0sz62ug=="></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Birthday Quest</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+  :root{
+    --navy:#0a0620;
+    --panel:#160f33;
+    --panel-edge:#2a1e5c;
+    --magenta:#ff4ecd;
+    --cyan:#4ff0ff;
+    --purple:#a06bff;
+    --lav:#e9e4ff;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:'Space Mono',monospace;color:var(--lav);margin:0;overflow-x:hidden;}
+  .pixel{font-family:'Press Start 2P',monospace;line-height:1.5;}
+  /* scanlines + starfield overlay */
+  .fx-scanlines{position:fixed;inset:0;pointer-events:none;z-index:40;
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.18) 3px, rgba(0,0,0,0.18) 4px);
+    mix-blend-mode:multiply;opacity:.5;}
+  .fx-stars{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden;}
+  .star{position:absolute;width:2px;height:2px;background:#fff;box-shadow:0 0 6px #fff;animation:twinkle 3s infinite ease-in-out;}
+  @keyframes twinkle{0%,100%{opacity:.15;transform:scale(1);}50%{opacity:1;transform:scale(1.6);}}
+  .glow-mag{text-shadow:0 0 6px var(--magenta),0 0 14px rgba(255,78,205,.6);}
+  .glow-cyan{text-shadow:0 0 6px var(--cyan),0 0 14px rgba(79,240,255,.5);}
+  /* dialogue panel */
+  .panel{background:var(--panel);border:3px solid var(--panel-edge);
+    box-shadow:0 0 0 3px var(--navy),0 0 28px rgba(160,107,255,.4);position:relative;}
+  .panel::before{content:"";position:absolute;inset:5px;border:1px solid rgba(160,107,255,.35);pointer-events:none;}
+  /* pixel button */
+  .pbtn{font-family:'Press Start 2P',monospace;position:relative;cursor:pointer;
+    border:3px solid var(--cyan);background:#1a1140;color:var(--lav);
+    box-shadow:4px 4px 0 rgba(0,0,0,.6),0 0 14px rgba(79,240,255,.25);
+    transition:transform .12s ease,box-shadow .12s ease,background .12s ease;}
+  .pbtn:hover,.pbtn:focus-visible{transform:translate(-2px,-2px);background:#241659;
+    box-shadow:6px 6px 0 rgba(0,0,0,.6),0 0 22px rgba(79,240,255,.55);outline:none;}
+  .pbtn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 rgba(0,0,0,.6);}
+  :focus-visible{outline:3px solid var(--magenta);outline-offset:3px;}
+  /* scenes */
+  .scene{display:none;animation:sceneIn .5s ease both;}
+  .scene.active{display:flex;}
+  @keyframes sceneIn{from{opacity:0;transform:translateY(18px) scale(.98);}to{opacity:1;transform:none;}}
+  /* shake */
+  .shake{animation:shake .45s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-9px);}40%{transform:translateX(9px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+  /* intro sparkles */
+  .isp{position:absolute;color:var(--cyan);animation:pop 2.2s infinite ease-out;opacity:0;font-size:14px;}
+  @keyframes pop{0%{opacity:0;transform:scale(0) rotate(0);}30%{opacity:1;transform:scale(1.2) rotate(20deg);}100%{opacity:0;transform:scale(0) rotate(60deg);}}
+  /* progress dots */
+  .pdot{width:12px;height:12px;background:#2a1e5c;border:2px solid #4b3a8f;image-rendering:pixelated;}
+  .pdot.on{background:var(--magenta);border-color:var(--magenta);box-shadow:0 0 10px var(--magenta);}
+  /* puzzle */
+  .ptile{background-image:var(--pz);background-size:300% 300%;image-rendering:auto;cursor:pointer;
+    border:2px solid #2a1e5c;transition:box-shadow .12s,transform .12s;position:relative;}
+  .ptile.sel{box-shadow:0 0 0 3px var(--magenta),0 0 18px var(--magenta);z-index:2;transform:scale(1.03);}
+  .ptile.blank{background:none;background-color:#0d0824;cursor:default;}
+  /* envelope */
+  .env{perspective:900px;}
+  .env-flap{transition:transform .7s ease;transform-origin:top center;background:#2a1e5c;}
+  .env.is-open .env-flap{transform:rotateX(180deg);z-index:0;}
+  .env-sheet{transition:transform .8s .3s ease,opacity .6s .3s ease;transform:translateY(0);opacity:0;}
+  .env.is-open .env-sheet{transform:translateY(-42%);opacity:1;}
+  /* confetti */
+  .confetti{position:fixed;top:-20px;width:10px;height:10px;z-index:50;image-rendering:pixelated;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(105vh) rotate(540deg);}}
+  .float-anim{animation:floaty 4s ease-in-out infinite;}
+  @keyframes floaty{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+</style>
+  <script src="/_sdk/0179d719c431a79e.data_sdk.js" type="text/javascript" integrity="sha512-OsRvJkI5GkC3MJQcgotQYotpzrMSX415GiKKgvYdxQEEkzD/fdchShO2FMSy0PJr/tiINMXOk5Vl2zAgg6bUiA=="></script>
+  <script src="/_sdk/9432170dbd2ae0df.resizing_sdk.js" type="text/javascript" integrity="sha512-FeT+58sb1f9ejWPWFjCbJvTT+SDwGV+ngrHUnlO7TWEOoqwOLj6p256kO3vOL7DIWl1cIgrobiof8v2bOigwPg=="></script>
+ </head>
+ <body data-template-id="__page-root" class="min-h-screen w-full relative" style="background: radial-gradient(rgb(26, 15, 61), rgb(10, 6, 32), rgb(5, 2, 17));">
+  <div class="fx-stars" id="starfield" aria-hidden="true"></div>
+  <div class="fx-scanlines" aria-hidden="true"></div><!-- Progress indicator -->
+  <header class="fixed top-0 left-0 w-full z-30 px-4 py-3 flex items-center justify-center gap-4">
+   <div class="panel px-4 py-2 flex items-center gap-3"><span data-template-id="progress-label" class="pixel canva-text" style="font-size: 16px; color: rgb(79, 240, 255); font-weight: 400; font-style: normal;">QUEST</span>
+    <div class="flex gap-1.5" id="progress-dots" aria-hidden="true"><span class="pdot"></span><span class="pdot"></span><span class="pdot"></span><span class="pdot"></span><span class="pdot"></span><span class="pdot"></span>
+    </div>
+   </div>
+  </header>
+  <main class="relative z-10 w-full min-h-screen flex items-center justify-center px-4 py-24"><!-- SCENE 1 : INTRO -->
+   <section class="scene active w-full max-w-3xl flex-col items-center text-center gap-8" data-scene="intro" aria-label="Welcome">
+    <div class="relative w-full"><span class="isp" style="left:8%;top:-10px;animation-delay:0s">✦</span> <span class="isp" style="left:82%;top:10px;animation-delay:.4s">✧</span> <span class="isp" style="left:20%;top:60px;animation-delay:.9s">✦</span> <span class="isp" style="left:70%;top:70px;animation-delay:1.3s">✧</span> <span class="isp" style="left:45%;top:-24px;animation-delay:1.7s">✦</span>
+     <div class="panel px-6 py-10 md:px-12 md:py-14 float-anim">
+      <h1 data-template-id="intro-title" class="pixel canva-text glow-mag mb-6" style="color: rgb(255, 78, 205); font-weight: 400; font-style: normal; font-size: 32px;">HAPPY BIRTHDAY</h1>
+      <p data-template-id="intro-subtitle" class="canva-text text-lg md:text-xl leading-relaxed" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">A tiny adventure has been prepared just for you. Press START when you're ready, hero.</p>
+     </div>
+    </div><button data-template-id="intro-start-button" class="pbtn canva-button px-10 py-5 text-sm" onclick="go('gate')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">▶ START</button>
+   </section><!-- SCENE 2 : PASSWORD -->
+   <section class="scene w-full max-w-xl flex-col items-center gap-8" data-scene="gate" aria-label="Password gate">
+    <div class="panel w-full px-6 py-10 md:px-10">
+     <h2 data-template-id="gate-title" class="pixel canva-text glow-cyan mb-4 text-center" style="color: rgb(79, 240, 255); font-weight: 400; font-style: normal; font-size: 24px;">LOCKED GATE</h2>
+     <p data-template-id="gate-hint" class="canva-text text-center mb-8 opacity-90" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;"> A secret code guards the next chamber. Enter the passphrase to continue.(A hint!It's related with today's date))</p>
+     <form id="gate-form" class="flex flex-col items-center gap-5"><label data-template-id="gate-label" for="gate-input" class="pixel canva-text self-start" style="font-size: 16px; color: rgb(160, 107, 255); font-weight: 400; font-style: normal;">ENTER CODE</label> <input id="gate-input" data-template-id="gate-input" type="text" inputmode="numeric" autocomplete="off" class="w-full text-center pixel text-lg px-4 py-4 bg-[#0d0824] border-[3px] border-[#4b3a8f] text-[#e9e4ff] tracking-widest focus:border-[#ff4ecd] focus:outline-none" style="letter-spacing: 0.4em; color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;" placeholder="• • • • • •">
+      <p data-template-id="gate-error" class="canva-text hidden text-center" style="color: rgb(255, 107, 157); font-weight: 400; font-style: normal; font-size: 16px;" role="alert">✖ Wrong code! Try again, brave one.</p><button data-template-id="gate-submit-button" type="submit" class="pbtn canva-button px-8 py-4 text-xs" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">UNLOCK</button>
+     </form>
+    </div>
+   </section><!-- SCENE 2B : NAME SCREEN -->
+   <section class="scene w-full max-w-xl flex-col items-center gap-8" data-scene="name-gate" aria-label="Name check">
+    <div class="panel w-full px-6 py-10 md:px-10">
+     <h2 data-template-id="name-title" class="pixel canva-text glow-mag mb-4 text-center" style="color: rgb(255, 78, 205); font-weight: 400; font-style: normal; font-size: 22px;">WHAT IS YOUR NAME?</h2>
+     <p data-template-id="name-hint" class="canva-text text-center mb-8 opacity-90" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">Identify yourself sweety.</p>
+     <form id="name-form" class="flex flex-col items-center gap-5"><label data-template-id="name-label" for="name-input" class="pixel canva-text self-start" style="font-size: 16px; color: rgb(160, 107, 255); font-weight: 400; font-style: normal;">ENTER NAME</label> <input id="name-input" data-template-id="name-input" type="text" autocomplete="off" class="w-full text-center pixel text-sm px-4 py-4 bg-[#0d0824] border-[3px] border-[#4b3a8f] text-[#e9e4ff] focus:border-[#ff4ecd] focus:outline-none" placeholder="Type your name..." style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">
+      <p data-template-id="name-kitty-reveal" id="name-kitty-reveal" class="canva-text hidden text-center text-[#4ff0ff] leading-relaxed mt-2" role="status" style="color: rgb(79, 240, 255); font-weight: 400; font-style: normal; font-size: 16px;">Who the fuck is that? Have you forgotten thatyou are my favorite kitty!? 💖</p><button data-template-id="name-submit-button" type="submit" class="pbtn canva-button px-8 py-4 text-xs" id="name-btn" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">CONTINUE</button>
+     </form>
+    </div>
+   </section><!-- SCENE 2C : GIRL CHARACTER GUIDE -->
+   <section class="scene w-full max-w-2xl flex-col items-center gap-8" data-scene="guide" aria-label="Meet your guide">
+    <div class="panel w-full px-6 py-8 md:px-10 flex flex-col items-center gap-6">
+     <div class="relative w-32 h-32 border-4 border-[#ff4ecd] rounded-lg bg-[#1a1140] p-1 shadow-lg flex items-center justify-center overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-t from-[#ff4ecd]/30 to-transparent"></div>
+      <svg class="w-24 h-24 text-[#ff4ecd]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v1a4 4 0 0 0 8 0V7a5 5 0 0 0-5-5z"></path> <path d="M18 11h-.01"></path> <path d="M6 11h-.01"></path> <path d="M3 15a6 6 0 0 1 18 0v2H3v-2z"></path> <path d="M10 22h4"></path>
+      </svg>
+      <div class="absolute bottom-1 bg-[#ff4ecd] px-2 py-0.5 rounded text-[8px] pixel text-[#0a0620]" data-template-id="guide-avatar-tag" style="color: rgb(10, 6, 32); font-weight: 400; font-style: normal; font-size: 16px;">GUIDE</div>
+     </div>
+     <div class="w-full text-center">
+      <h3 data-template-id="guide-name" class="pixel canva-text glow-cyan text-sm mb-3" style="color: rgb(79, 240, 255); font-weight: 400; font-style: normal; font-size: 16px;">SOME GIFTS ARE WAITING FOU YOU<3</h3>
+      <p data-template-id="guide-text" class="canva-text text-base md:text-lg leading-relaxed mb-6" id="guide-bubble-text" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">Oh, hello there, favorite kitty! 🌸I have prepared several magical surprises for your special day in the secret vaults ahead! Choose wisely!</p>
+     </div><button data-template-id="guide-next-button" class="pbtn canva-button px-8 py-4 text-xs" onclick="go('hub')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">SEE GIFTS ▶</button>
+    </div>
+   </section><!-- SCENE 3 : HUB -->
+   <section class="scene w-full max-w-4xl flex-col items-center gap-10" data-scene="hub" aria-label="Choose your path">
+    <h2 data-template-id="hub-title" class="pixel canva-text glow-mag text-center" style="color: rgb(255, 78, 205); font-weight: 400; font-style: normal; font-size: 24px;">CHOOSE YOUR PATH</h2><!-- Retro Pixel Gift Boxes Container -->
+    <div class="flex flex-wrap justify-center gap-8 my-4" id="gift-boxes-container">
+     <!-- Gift 1: Puzzle Box --> <button type="button" class="group relative flex flex-col items-center focus:outline-none" onclick="go('puzzle')" aria-label="Open Puzzle Gift">
+      <div class="relative w-28 h-28 flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-2 active:scale-95">
+       <!-- Pixel Box Body with Ribbon and Hover Glow -->
+       <div class="absolute inset-0 bg-[#ff4ecd] border-4 border-[#ff9ee5] rounded shadow-lg group-hover:shadow-[0_0_20px_#ff4ecd] transition-shadow duration-200"></div><!-- Vertical Ribbon -->
+       <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-6 bg-[#4ff0ff] border-x-4 border-[#0a0620]"></div><!-- Horizontal Ribbon -->
+       <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-6 bg-[#4ff0ff] border-y-4 border-[#0a0620]"></div><!-- Pixel Bow -->
+       <div class="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-1">
+        <div class="w-5 h-5 bg-[#4ff0ff] border-4 border-[#0a0620] rotate-45"></div>
+        <div class="w-5 h-5 bg-[#4ff0ff] border-4 border-[#0a0620] -rotate-45"></div>
+       </div><!-- Sparkle Spark Icon --> <i data-lucide="puzzle" class="relative z-10 w-8 h-8 text-[#0a0620]" style="stroke-width:3"></i>
+      </div><span data-template-id="path-puzzle-button" class="pixel canva-text mt-4 text-[10px] text-center tracking-wider text-[#e9e4ff]" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;"><3</span> </button> <!-- Gift 2: Letter Box --> <button type="button" class="group relative flex flex-col items-center focus:outline-none" onclick="go('letter')" aria-label="Open Letter Gift">
+      <div class="relative w-28 h-28 flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-2 active:scale-95">
+       <!-- Pixel Box Body with Ribbon and Hover Glow -->
+       <div class="absolute inset-0 bg-[#a06bff] border-4 border-[#d5bfff] rounded shadow-lg group-hover:shadow-[0_0_20px_#a06bff] transition-shadow duration-200"></div><!-- Vertical Ribbon -->
+       <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-6 bg-[#ff4ecd] border-x-4 border-[#0a0620]"></div><!-- Horizontal Ribbon -->
+       <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-6 bg-[#ff4ecd] border-y-4 border-[#0a0620]"></div><!-- Pixel Bow -->
+       <div class="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-1">
+        <div class="w-5 h-5 bg-[#ff4ecd] border-4 border-[#0a0620] rotate-45"></div>
+        <div class="w-5 h-5 bg-[#ff4ecd] border-4 border-[#0a0620] -rotate-45"></div>
+       </div><!-- Sparkle Spark Icon --> <i data-lucide="mail" class="relative z-10 w-8 h-8 text-[#0a0620]" style="stroke-width:3"></i>
+      </div><span data-template-id="path-letter-button" class="pixel canva-text mt-4 text-[10px] text-center tracking-wider text-[#e9e4ff]" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;"><3</span> </button> <!-- Gift 3: Memories Box --> <button type="button" class="group relative flex flex-col items-center focus:outline-none" onclick="go('photos')" aria-label="Open Memories Gift">
+      <div class="relative w-28 h-28 flex items-center justify-center transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-2 active:scale-95">
+       <!-- Pixel Box Body with Ribbon and Hover Glow -->
+       <div class="absolute inset-0 bg-[#4ff0ff] border-4 border-[#bdfcff] rounded shadow-lg group-hover:shadow-[0_0_20px_#4ff0ff] transition-shadow duration-200"></div><!-- Vertical Ribbon -->
+       <div class="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-6 bg-[#a06bff] border-x-4 border-[#0a0620]"></div><!-- Horizontal Ribbon -->
+       <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-6 bg-[#a06bff] border-y-4 border-[#0a0620]"></div><!-- Pixel Bow -->
+       <div class="absolute -top-4 left-1/2 -translate-x-1/2 flex gap-1">
+        <div class="w-5 h-5 bg-[#a06bff] border-4 border-[#0a0620] rotate-45"></div>
+        <div class="w-5 h-5 bg-[#a06bff] border-4 border-[#0a0620] -rotate-45"></div>
+       </div><!-- Sparkle Spark Icon --> <i data-lucide="images" class="relative z-10 w-8 h-8 text-[#0a0620]" style="stroke-width:3"></i>
+      </div><span data-template-id="path-photos-button" class="pixel canva-text mt-4 text-[10px] text-center tracking-wider text-[#e9e4ff]" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;"><3</span> </button>
+    </div>
+   </section><!-- SCENE 4A : PUZZLE -->
+   <section class="scene w-full max-w-lg flex-col items-center gap-6" data-scene="puzzle" aria-label="Puzzle">
+    <h2 data-template-id="puzzle-title" class="pixel canva-text glow-cyan text-center" style="color: rgb(79, 240, 255); font-weight: 400; font-style: normal; font-size: 24px;">SOLVE THE PUZZLE</h2>
+    <p data-template-id="puzzle-hint" class="canva-text text-center opacity-90" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">Tap two tiles to swap them. Rebuild the puzzle to win!</p>
+    <div class="panel p-3">
+     <div id="puzzle-grid" class="grid grid-cols-3 gap-1" style="width:min(78vw,360px);height:min(78vw,360px)"></div>
+    </div>
+    <div class="flex flex-col items-center gap-4">
+     <p data-template-id="puzzle-success" class="pixel canva-text hidden glow-mag text-center" style="font-size: 16px; color: rgb(255, 78, 205); font-weight: 400; font-style: normal;" role="status">★ SOLVED! Sweet victory! ★</p>
+     <div class="flex gap-4 flex-wrap justify-center"><button data-template-id="puzzle-back-button" class="pbtn canva-button px-6 py-4 text-xs" onclick="go('hub')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">◀ HUB</button> <button data-template-id="puzzle-next-button" class="pbtn canva-button hidden px-6 py-4 text-xs" onclick="go('finale')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">CELEBRATE ▶</button>
+     </div>
+    </div><!-- hidden source image so it stays editable --> <img data-template-id="puzzle-image" id="puzzle-src" class="canva-image hidden" loading="lazy" alt="Festive strawberry-topped birthday cake with sparkler candles" src="photo/puzzle.jpg">
+   </section><!-- SCENE 4B : LETTER -->
+   <section class="scene w-full max-w-2xl flex-col items-center gap-8" data-scene="letter" aria-label="Letter">
+    <h2 data-template-id="letter-title" class="pixel canva-text glow-mag text-center" style="color: rgb(255, 78, 205); font-weight: 400; font-style: normal; font-size: 24px;">A SEALED LETTER</h2>
+    <div class="env relative w-full" id="envelope" style="max-width:520px;height:340px"><!-- envelope body -->
+     <div class="absolute inset-0 top-1/3 bg-[#241659] border-[3px] border-[#4b3a8f]" style="box-shadow:0 0 22px rgba(160,107,255,.4)"></div><!-- sheet -->
+     <div class="env-sheet z-20 absolute left-1/2 -translate-x-1/2 w-[88%] bg-[#f4f0ff] text-[#1a1140] px-6 py-7 shadow-2xl" style="top:14%;border-radius:2px">
+      <p data-template-id="letter-body" class="canva-text leading-relaxed" style="color: rgb(36, 22, 89); font-weight: 400; font-style: normal; font-size: 16px;">My darling,I can't express in words how much I love you.Once we didn't even know each other and now I can't imagine my life without you. Thank you for every laugh, every adventure, and every quiet moment we've shared. May this new year bring you courage, joy, and dreams that come true. Here's to you — happy birthday my love!💖💖💖</p>
+     </div><!-- flap -->
+     <div class="env-flap absolute inset-x-0 top-1/3 border-[3px] border-[#4b3a8f]" style="height:0;border-left:calc(min(520px,90vw)/2) solid transparent;border-right:calc(min(520px,90vw)/2) solid transparent;border-top:120px solid #241659;background:transparent"></div><!-- front pocket -->
+     <div class="absolute inset-x-0 bottom-0 top-1/2 bg-[#1a1140] border-[3px] border-[#4b3a8f] z-10" style="clip-path:polygon(0 0,50% 45%,100% 0,100% 100%,0 100%)"></div>
+    </div><button data-template-id="letter-open-button" class="pbtn canva-button px-8 py-4 text-xs" onclick="openEnvelope()" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">OPEN ENVELOPE</button>
+    <div class="flex gap-4 flex-wrap justify-center"><button data-template-id="letter-back-button" class="pbtn canva-button px-6 py-4 text-xs" onclick="go('hub')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">◀ HUB</button> <button data-template-id="letter-next-button" class="pbtn canva-button hidden px-6 py-4 text-xs" onclick="go('finale')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">CELEBRATE ▶</button>
+    </div>
+   </section><!-- SCENE 4C : PHOTOS -->
+   <section class="scene w-full max-w-4xl flex-col items-center gap-8" data-scene="photos" aria-label="Photos">
+    <h2 data-template-id="photos-title" class="pixel canva-text glow-cyan text-center" style="color: rgb(79, 240, 255); font-weight: 400; font-style: normal; font-size: 24px;">MEMORY SCRAPBOOK</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+     <figure data-template-id="frame-1" class="canva-card bg-[#f4f0ff] p-3 pb-6 shadow-xl float-anim" style="transform: rotate(-3deg); animation-delay: 0s; background: rgb(244, 240, 255);"><img data-template-id="gallery-photo-1" class="canva-image w-full h-44 object-cover" loading="lazy" src="photo/nikita4.png "
+>
+      <figcaption data-template-id="gallery-caption-1" class="canva-text pixel text-center mt-3" style="font-size: 16px; color: rgb(36, 22, 89); font-weight: 400; font-style: normal;">FOREVER</figcaption>
+     </figure>
+     <figure data-template-id="frame-2" class="canva-card bg-[#f4f0ff] p-3 pb-6 shadow-xl float-anim" style="transform: rotate(2deg); animation-delay: 0.5s; background: rgb(244, 240, 255);"><img data-template-id="gallery-photo-2" class="canva-image w-full h-44 object-cover" loading="lazy"src="photo/nikita1.png">
+      <figcaption data-template-id="gallery-caption-2" class="canva-text pixel text-center mt-3" style="font-size: 16px; color: rgb(36, 22, 89); font-weight: 400; font-style: normal;">MY</figcaption>
+     </figure>
+<figure data-template-id="frame-3"
+class="canva-card bg-[#f4f0ff] p-3 pb-6 shadow-xl float-anim"
+style="transform: rotate(-2deg); animation-delay: 1s; background: rgb(244,240,255);">
+
+<img data-template-id="gallery-photo-3"
+class="canva-image w-full h-44 object-cover"
+loading="lazy"
+src="photo/nikita2.png">
+      <figcaption data-template-id="gallery-caption-3" class="canva-text pixel text-center mt-3" style="font-size: 16px; color: rgb(36, 22, 89); font-weight: 400; font-style: normal;">FAVORITE</figcaption>
+     </figure>
+     <figure data-template-id="frame-4" class="canva-card bg-[#f4f0ff] p-3 pb-6 shadow-xl float-anim" style="transform: rotate(3deg); animation-delay: 1.5s; background: rgb(244, 240, 255);"><img data-template-id="gallery-photo-4" class="canva-image w-full h-44 object-cover" loading="lazy" src="photo/nikita3.png "
+>
+      <figcaption data-template-id="gallery-caption-4" class="canva-text pixel text-center mt-3" style="font-size: 16px; color: rgb(36, 22, 89); font-weight: 400; font-style: normal;">BOY💙</figcaption>
+     </figure>
+    </div>
+    <div class="flex gap-4 flex-wrap justify-center"><button data-template-id="photos-back-button" class="pbtn canva-button px-6 py-4 text-xs" onclick="go('hub')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">◀ HUB</button> <button data-template-id="photos-next-button" class="pbtn canva-button px-6 py-4 text-xs" onclick="go('finale')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">CELEBRATE ▶</button>
+    </div>
+   </section><!-- SCENE 5 : FINALE -->
+   <section class="scene w-full max-w-3xl flex-col items-center text-center gap-8" data-scene="finale" aria-label="Celebration">
+    <div class="panel px-6 py-12 md:px-12 md:py-16 float-anim w-full">
+     <h1 data-template-id="finale-title" class="pixel canva-text glow-mag mb-6" style="color: rgb(255, 78, 205); font-weight: 400; font-style: normal; font-size: 32px;">HAPPY BIRTHDAY!</h1>
+     <p data-template-id="finale-subtitle" class="canva-text text-lg md:text-xl leading-relaxed" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">You cleared the quest! Wishing you a year full of magic, laughter, and endless high scores. This one's all for you.</p>
+    </div>
+    <div class="flex gap-4 flex-wrap justify-center"><button data-template-id="finale-hub-button" class="pbtn canva-button px-8 py-4 text-xs" onclick="go('hub')" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">◀ BACK TO HUB</button> <button data-template-id="finale-replay-button" class="pbtn canva-button px-8 py-4 text-xs" onclick="replay()" style="color: rgb(233, 228, 255); font-weight: 400; font-style: normal; font-size: 16px;">↻ REPLAY</button>
+    </div>
+   </section>
+  </main>
+  <script src="/_sdk/719055fef2a85d14.editing_sdk.js" integrity="sha512-kFqrdGgIiTOsu307feB5Cy3JVP9IayftsmCIZ0csxYBGuBmJQPhyvcnmKR8F0fTW97h5s1gAvz3SumI8zJ6OxQ=="></script>
+  <script>
+  // ---- starfield ----
+  (function(){
+    const sf = document.getElementById('starfield');
+    for(let i=0;i<70;i++){
+      const s=document.createElement('span');
+      s.className='star';
+      s.style.left=Math.random()*100+'%';
+      s.style.top=Math.random()*100+'%';
+      s.style.animationDelay=(Math.random()*3)+'s';
+      s.style.width=s.style.height=(Math.random()<.2?3:2)+'px';
+      sf.appendChild(s);
+    }
+  })();
+
+  // ---- scene navigation ----
+  const sceneOrder = ['intro','gate','name-gate','guide','hub','finale'];
+  const dots = document.querySelectorAll('#progress-dots .pdot');
+  function progressIndex(name){
+    if(name==='intro')return 0;
+    if(name==='gate')return 1;
+    if(name==='name-gate')return 2;
+    if(name==='guide')return 3;
+    if(name==='hub'||name==='puzzle'||name==='letter'||name==='photos')return 4;
+    if(name==='finale')return 5;
+    return 0;
+  }
+
+  function go(name){
+
+
+const music = document.getElementById("bgMusic");
+
+if (music && music.paused) {
+    music.volume = 0.4; // громкость (0.0–1.0)
+    music.play().catch(() => {});
+}
+    document.querySelectorAll('.scene').forEach(s=>s.classList.remove('active'));
+    const el=document.querySelector('.scene[data-scene="'+name+'"]');
+    if(!el)return;
+    // retrigger animation
+    el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+    const heading=el.querySelector('h1,h2,h3');
+    if(heading){heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true});}
+    window.scrollTo({top:0,behavior:'smooth'});
+    // progress dots
+    const idx=progressIndex(name);
+    dots.forEach((d,i)=>d.classList.toggle('on', i<=idx));
+    if(name==='finale')launchConfetti();
+    if(name==='puzzle')ensurePuzzle();
+  }
+  dots.forEach((d,i)=>{if(i===0)d.classList.add('on');});
+
+  // ---- password gate ----
+  const gateForm=document.getElementById('gate-form');
+  const gateInput=document.getElementById('gate-input');
+  const gateError=document.querySelector('[data-template-id="gate-error"]');
+  gateForm.addEventListener('submit',function(e){
+    e.preventDefault();
+    if(gateInput.value.trim()==='240726'){
+      gateError.classList.add('hidden');
+      go('name-gate');
+    }else{
+      gateError.classList.remove('hidden');
+      gateInput.classList.remove('shake'); void gateInput.offsetWidth; gateInput.classList.add('shake');
+      gateInput.focus();
+    }
+  });
+
+  // ---- name check ----
+  const nameForm=document.getElementById('name-form');
+  const nameInput=document.getElementById('name-input');
+  const nameReveal=document.getElementById('name-kitty-reveal');
+  const nameBtn=document.getElementById('name-btn');
+  let nameSubmitted = false;
+
+  nameForm.addEventListener('submit',function(e){
+    e.preventDefault();
+    if(!nameSubmitted){
+      if(!nameInput.value.trim()){
+        nameInput.classList.remove('shake'); void nameInput.offsetWidth; nameInput.classList.add('shake');
+        nameInput.focus();
+        return;
+      }
+      nameReveal.classList.remove('hidden');
+      nameInput.setAttribute('disabled', 'true');
+      nameBtn.textContent = 'PROCEED';
+      nameSubmitted = true;
+    } else {
+      go('guide');
+    }
+  });
+
+  // ---- puzzle (3x3 tile-swap) ----
+  const grid=document.getElementById('puzzle-grid');
+  let tiles=[], selected=-1, puzzleReady=false;
+  const successMsg=document.querySelector('[data-template-id="puzzle-success"]');
+  const puzzleNext=document.querySelector('[data-template-id="puzzle-next-button"]');
+
+  function buildPuzzle(){
+    const src=document.getElementById('puzzle-src').currentSrc||document.getElementById('puzzle-src').src;
+    grid.style.setProperty('--pz','url("'+src+'")');
+    grid.innerHTML='';
+    tiles=[];
+    for(let i=0;i<9;i++){
+      const t=document.createElement('button');
+      t.type='button';
+      t.className='ptile';
+      const col=i%3, row=Math.floor(i/3);
+      t.style.backgroundPosition=(col*50)+'% '+(row*50)+'%';
+      t.dataset.correct=i;
+      t.dataset.pos=i;
+      t.setAttribute('aria-label','Puzzle tile '+(i+1));
+      t.addEventListener('click',()=>onTile(t));
+      tiles.push(t);
+      grid.appendChild(t);
+    }
+    shuffle();
+    puzzleReady=true;
+  }
+  function ensurePuzzle(){
+    if(!puzzleReady)buildPuzzle();
+  }
+  function currentOrder(){return [...grid.children];}
+  function shuffle(){
+    // start solved, apply random swaps -> always solvable
+    let els=currentOrder();
+    for(let n=0;n<40;n++){
+      const a=Math.floor(Math.random()*9);let b=Math.floor(Math.random()*9);
+      if(a===b)b=(b+1)%9;
+      swapDom(els[a],els[b]);
+      els=currentOrder();
+    }
+    if(isSolved())shuffle();
+    successMsg.classList.add('hidden');
+    puzzleNext.classList.add('hidden');
+  }
+  function swapDom(x,y){
+    const marker=document.createElement('span');
+    grid.insertBefore(marker,x);
+    grid.insertBefore(x,y);
+    grid.insertBefore(y,marker);
+    grid.removeChild(marker);
+  }
+  function onTile(t){
+    if(isSolved())return;
+    const els=currentOrder();
+    const idx=els.indexOf(t);
+    if(selected===-1){
+      selected=idx;t.classList.add('sel');
+    }else if(selected===idx){
+      t.classList.remove('sel');selected=-1;
+    }else{
+      els[selected].classList.remove('sel');
+      swapDom(els[selected],els[idx]);
+      selected=-1;
+      checkSolved();
+    }
+  }
+  function isSolved(){
+    return currentOrder().every((el,i)=>el.dataset.correct==i);
+  }
+  function checkSolved(){
+    if(isSolved()){
+      successMsg.classList.remove('hidden');
+      puzzleNext.classList.remove('hidden');
+      currentOrder().forEach(el=>el.classList.remove('sel'));
+    }
+  }
+
+  // ---- envelope ----
+  function openEnvelope(){
+    document.getElementById('envelope').classList.add('is-open');
+    document.querySelector('[data-template-id="letter-next-button"]').classList.remove('hidden');
+  }
+
+  // ---- confetti ----
+  const confColors=['#ff4ecd','#4ff0ff','#a06bff','#fff07f','#ffffff'];
+  function launchConfetti(){
+    for(let i=0;i<80;i++){
+      const c=document.createElement('div');
+      c.className='confetti';
+      c.style.left=Math.random()*100+'vw';
+      c.style.background=confColors[i%confColors.length];
+      c.style.animationDuration=(2+Math.random()*2.5)+'s';
+      c.style.animationDelay=(Math.random()*1.2)+'s';
+      if(Math.random()<.4)c.style.borderRadius='50%';
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(),5000);
+    }
+  }
+
+  // ---- replay ----
+  function replay(){
+    puzzleReady=false;selected=-1;
+    go('hub');
+  }
+
+  // init icons
+  if(window.lucide)lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a182031ad711cc2d',t:'MTc4MzU0NDM2MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+
+
+<audio id="bgMusic" loop preload="auto">
+    <source src="music/twin.mp3" type="audio/mpeg">
+</audio>
+
+
+</body></html>
